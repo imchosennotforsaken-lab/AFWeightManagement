@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alex Filson Aesthetics - Client Management Portal</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg-cream: #FDFBF7;
+      --card-bg: #FFFFFF;
+      --text-main: #2C2623;
+      --text-muted: #786F6A;
+      --blush-accent: #E8D5CE;
+      --blush-light: #F7EFEA;
+      --rose-gold: #C49787;
+      --border-color: #EFE9E1;
+      --shadow-subtle: 0 4px 20px rgba(196, 151, 135, 0.08);
+      --font-serif: 'Cormorant Garamond', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-cream);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand h1 { font-family: var(--font-serif); font-size: 2.2rem; font-weight: 400; letter-spacing: 0.05em; }
+    .brand p { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--rose-gold); }
+
+    .header-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background-color: #FFF2E2;
+      color: #9C6800;
+      border: 1px solid #FFE0B2;
+    }
+    .sync-badge.connected { background-color: #E8F5E9; color: #2E7D32; border-color: #C8E6C9; }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background-color: currentColor; }
+
+    .btn {
+      background-color: var(--text-main);
+      color: #FFF;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 4px;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn:hover { background-color: var(--rose-gold); }
+    .btn-secondary { background-color: transparent; border: 1px solid var(--text-main); color: var(--text-main); }
+    .btn-secondary:hover { background-color: var(--blush-light); border-color: var(--rose-gold); color: var(--rose-gold); }
+
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+    }
+    .column {
+      background: var(--blush-light);
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+    .column-header {
+      font-family: var(--font-serif);
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-main);
+    }
+    .card-count { font-size: 0.75rem; font-family: var(--font-sans); background: var(--card-bg); padding: 0.1rem 0.5rem; border-radius: 12px; }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      box-shadow: var(--shadow-subtle);
+      border: 1px solid var(--border-color);
+    }
+    .client-name { font-weight: 600; font-size: 0.95rem; }
+    .item-title { color: var(--rose-gold); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .card-notes { font-size: 0.8rem; color: var(--text-muted); font-style: italic; margin-bottom: 0.75rem; }
+    .card-actions select { font-size: 0.75rem; padding: 0.2rem; border-radius: 4px; border: 1px solid var(--border-color); }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 450px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .modal-content h2 { font-family: var(--font-serif); margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.3rem; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-family: var(--font-sans);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="brand">
+      <h1>Alex Filson Aesthetics</h1>
+      <p>Client Order Portal</p>
+    </div>
+    <div class="header-actions">
+      <div id="syncBadge" class="sync-badge">
+        <span class="sync-dot"></span>
+        <span id="syncText">Demo Mode (Local)</span>
+      </div>
+      <button class="btn btn-secondary" onclick="openSyncModal()">Supabase Sync</button>
+      <button class="btn" onclick="openOrderModal()">+ New Order</button>
+    </div>
+  </header>
+
+  <div class="kanban-board">
+    <div class="column">
+      <div class="column-header">Lead <span class="card-count" id="count-Lead">0</span></div>
+      <div id="col-Lead"></div>
+    </div>
+    <div class="column">
+      <div class="column-header">Booked <span class="card-count" id="count-Booked">0</span></div>
+      <div id="col-Booked"></div>
+    </div>
+    <div class="column">
+      <div class="column-header">In Progress <span class="card-count" id="count-InProgress">0</span></div>
+      <div id="col-InProgress"></div>
+    </div>
+    <div class="column">
+      <div class="column-header">Completed <span class="card-count" id="count-Completed">0</span></div>
+      <div id="col-Completed"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Order Modal -->
+<div class="modal" id="orderModal">
+  <div class="modal-content">
+    <h2>New Client Order</h2>
+    <form id="orderForm">
+      <div class="form-group">
+        <label>Client Name</label>
+        <input type="text" id="clientName" required />
+      </div>
+      <div class="form-group">
+        <label>Treatment / Item</label>
+        <input type="text" id="itemTitle" required />
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="orderStatus">
+          <option value="Lead">Lead</option>
+          <option value="Booked">Booked</option>
+          <option value="InProgress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="orderNotes" rows="3"></textarea>
+      </div>
+      <button type="submit" class="btn">Save Order</button>
+      <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">Cancel</button>
+    </form>
+  </div>
+</div>
+
+<!-- Supabase Sync Modal -->
+<div class="modal" id="syncModal">
+  <div class="modal-content">
+    <h2>Connect Supabase</h2>
+    <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">Enter your Supabase credentials once to enable live sync across your phone and laptop.</p>
+    <div class="form-group">
+      <label>Project URL</label>
+      <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
+    </div>
+    <div class="form-group">
+      <label>Anon Public Key</label>
+      <input type="text" id="supabaseKey" placeholder="eyJhbGciOi..." />
+    </div>
+    <button class="btn" onclick="saveSupabaseConfig()">Save & Connect</button>
+    <button class="btn btn-secondary" onclick="closeSyncModal()">Close</button>
+  </div>
+</div>
+
+<script>
+  let orders = [];
+  let supabaseClient = null;
+
+  const statuses = ['Lead', 'Booked', 'InProgress', 'Completed'];
+
+  function init() {
+    const url = localStorage.getItem('supabase_url');
+    const key = localStorage.getItem('supabase_key');
+    
+    if(url && key && window.supabase) {
+      connectSupabase(url, key);
+    } else {
+      loadLocalOrders();
+    }
+  }
+
+  function connectSupabase(url, key) {
+    try {
+      supabaseClient = window.supabase.createClient(url, key);
+      document.getElementById('syncBadge').classList.add('connected');
+      document.getElementById('syncText').innerText = 'Supabase Connected';
+      fetchSupabaseOrders();
+      subscribeRealtime();
+    } catch(e) {
+      console.error(e);
+      loadLocalOrders();
+    }
+  }
+
+  async function fetchSupabaseOrders() {
+    if(!supabaseClient) return;
+    const { data, error } = await supabaseClient.from('orders').select('*').order('updated_at', { ascending: false });
+    if(!error && data) {
+      orders = data;
+      renderBoard();
+    }
+  }
+
+  function subscribeRealtime() {
+    if(!supabaseClient) return;
+    supabaseClient.channel('custom-all-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchSupabaseOrders();
+      })
+      .subscribe();
+  }
+
+  function loadLocalOrders() {
+    orders = JSON.parse(localStorage.getItem('alex_orders') || '[]');
+    renderBoard();
+  }
+
+  function renderBoard() {
+    statuses.forEach(status => {
+      const col = document.getElementById(`col-${status}`);
+      col.innerHTML = '';
+      const filtered = orders.filter(o => o.status === status);
+      document.getElementById(`count-${status}`).innerText = filtered.length;
+
+      filtered.forEach(o => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="client-name">${o.client_name}</div>
+          <div class="item-title">${o.item_title}</div>
+          <div class="card-notes">${o.notes || ''}</div>
+          <div class="card-actions">
+            <select onchange="updateOrderStatus('${o.id}', this.value)">
+              ${statuses.map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        `;
+        col.appendChild(card);
+      });
+    });
+  }
+
+  async function updateOrderStatus(id, newStatus) {
+    if(supabaseClient) {
+      await supabaseClient.from('orders').update({ status: newStatus }).eq('id', id);
+    } else {
+      const idx = orders.findIndex(o => o.id === id);
+      if(idx !== -1) orders[idx].status = newStatus;
+      localStorage.setItem('alex_orders', JSON.stringify(orders));
+      renderBoard();
+    }
+  }
+
+  document.getElementById('orderForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const newOrder = {
+      client_name: document.getElementById('clientName').value,
+      item_title: document.getElementById('itemTitle').value,
+      status: document.getElementById('orderStatus').value,
+      notes: document.getElementById('orderNotes').value,
+    };
+
+    if(supabaseClient) {
+      await supabaseClient.from('orders').insert([newOrder]);
+    } else {
+      newOrder.id = Date.now().toString();
+      orders.push(newOrder);
+      localStorage.setItem('alex_orders', JSON.stringify(orders));
+      renderBoard();
+    }
+
+    closeOrderModal();
+    document.getElementById('orderForm').reset();
+  };
+
+  function saveSupabaseConfig() {
+    const url = document.getElementById('supabaseUrl').value.trim();
+    const key = document.getElementById('supabaseKey').value.trim();
+    if(url && key) {
+      localStorage.setItem('supabase_url', url);
+      localStorage.setItem('supabase_key', key);
+      connectSupabase(url, key);
+      closeSyncModal();
+    }
+  }
+
+  function openOrderModal() { document.getElementById('orderModal').style.display = 'flex'; }
+  function closeOrderModal() { document.getElementById('orderModal').style.display = 'none'; }
+  function openSyncModal() { document.getElementById('syncModal').style.display = 'flex'; }
+  function closeSyncModal() { document.getElementById('syncModal').style.display = 'none'; }
+
+  window.onload = init;
+</script>
+</body>
+</html>
